@@ -35,14 +35,12 @@
  *
  */
 
-#ifndef PCL_FILTERS_IMPL_VOXEL_GRID_H_
-#define PCL_FILTERS_IMPL_VOXEL_GRID_H_
+#pragma once
 
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
 #include <pcl/common/io.h>
-#include <pcl/filters/voxel_grid.h>
-#include <sys/time.h>
+#include <pcl/filters/voxel_grid_improved.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT> void
@@ -210,19 +208,11 @@ struct cloud_point_index_idx
   bool operator < (const cloud_point_index_idx &p) const { return (idx < p.idx); }
 };
 
-
-static inline long currentDateTime()
-{
-    struct timeval te; 
-    gettimeofday(&te, NULL); // get current time
-    long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
-    // printf("milliseconds: %lld\n", milliseconds);
-    return milliseconds;
-}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT> void
-pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
+pcl::VoxelGridImproved<PointT>::applyFilter (PointCloud &output)
 {
+  PCL_INFO ("VoxelGridImproved hpp:applyFilter");
   // Has the input dataset been set already?
   if (!input_)
   {
@@ -269,8 +259,6 @@ pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
 
   // Set up the division multiplier
   divb_mul_ = Eigen::Vector4i (1, div_b_[0], div_b_[0] * div_b_[1], 0);
-  
-  long time0 = currentDateTime();
 
   // Storage for mapping leaf and pointcloud indexes
   std::vector<cloud_point_index_idx> index_vector;
@@ -349,16 +337,10 @@ pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
     }
   }
 
-  long time1 = currentDateTime();
-  std::cout << "total time taken first phase in mili secs =" << (time1 - time0) << std::endl;
   // Second pass: sort the index_vector vector using value representing target cell as index
   // in effect all points belonging to the same output cell will be next to each other
-  
-  time0 = currentDateTime();  
   std::sort (index_vector.begin (), index_vector.end (), std::less<cloud_point_index_idx> ());
-  time1 = currentDateTime();
-  std::cout << "total time taken second pass sorting in mili secs =" << (time1 - time0) << std::endl;
-  time0 = currentDateTime();
+
   // Third pass: count output cells
   // we need to skip all the same, adjacenent idx values
   unsigned int total = 0;
@@ -382,9 +364,6 @@ pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
     index = i;
   }
 
-  time1 = currentDateTime();
-  std::cout << "total time taken third pass  in mili secs =" << (time1 - time0) << std::endl;
-  time0 = currentDateTime();
   // Fourth pass: compute centroids, insert them into their final position
   output.points.resize (total);
   if (save_leaf_layout_)
@@ -403,12 +382,12 @@ pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
     }
     catch (std::bad_alloc&)
     {
-      throw PCLException("VoxelGrid bin size is too low; impossible to allocate memory for layout", 
+      throw PCLException("VoxelGridImproved bin size is too low; impossible to allocate memory for layout", 
         "voxel_grid.hpp", "applyFilter");	
     }
     catch (std::length_error&)
     {
-      throw PCLException("VoxelGrid bin size is too low; impossible to allocate memory for layout", 
+      throw PCLException("VoxelGridImproved bin size is too low; impossible to allocate memory for layout", 
         "voxel_grid.hpp", "applyFilter");	
     }
   }
@@ -448,14 +427,8 @@ pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
      
     ++index;
   }
-
-  time1 = currentDateTime();
-  std::cout << "total time taken 4th pass and computing centroid   in mili secs =" << (time1 - time0) << std::endl;
   output.width = static_cast<uint32_t> (output.points.size ());
 }
 
-#define PCL_INSTANTIATE_VoxelGrid(T) template class PCL_EXPORTS pcl::VoxelGrid<T>;
-#define PCL_INSTANTIATE_getMinMax3D(T) template PCL_EXPORTS void pcl::getMinMax3D<T> (const pcl::PointCloud<T>::ConstPtr &, const std::string &, float, float, Eigen::Vector4f &, Eigen::Vector4f &, bool);
-
-#endif    // PCL_FILTERS_IMPL_VOXEL_GRID_H_
-
+#define PCL_INSTANTIATE_VoxelGridImproved(T) template class PCL_EXPORTS pcl::VoxelGridImproved<T>;
+// #define PCL_INSTANTIATE_getMinMax3D(T) template PCL_EXPORTS void pcl::getMinMax3D<T> (const pcl::PointCloud<T>::ConstPtr &, const std::string &, float, float, Eigen::Vector4f &, Eigen::Vector4f &, bool);
