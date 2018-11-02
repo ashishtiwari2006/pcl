@@ -41,6 +41,7 @@
 #include <iostream>
 #include <pcl/common/io.h>
 #include <pcl/filters/impl/voxel_grid.hpp>
+#include <sys/time.h>
 
 typedef Eigen::Array<size_t, 4, 1> Array4size_t;
 
@@ -544,7 +545,7 @@ pcl::getMinMax3D (const pcl::PCLPointCloud2ConstPtr &cloud, int x_idx, int y_idx
 void
 pcl::VoxelGrid<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2 &output)
 {
-  PCL_INFO ("Improved cpp:applyFilter");
+   std::cout << "Improved src cpp:applyFilter" << std::endl;
   // If fields x/y/z are not present, we cannot downsample
   if (x_idx_ == -1 || y_idx_ == -1 || z_idx_ == -1)
   {
@@ -614,6 +615,8 @@ pcl::VoxelGrid<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2 &output)
   // Compute the number of divisions needed along all axis
   div_b_ = max_b_ - min_b_ + Eigen::Vector4i::Ones ();
   div_b_[3] = 0;
+
+long time0 = currentDateTime();
 
   std::vector<cloud_point_index_idx> index_vector;
   index_vector.reserve (nr_points);
@@ -744,10 +747,16 @@ pcl::VoxelGrid<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2 &output)
     }
   }
 
+  long time1 = currentDateTime();
+  std::cout << "total time taken first phase in mili secs =" << (time1 - time0) << std::endl;
   // Second pass: sort the index_vector vector using value representing target cell as index
   // in effect all points belonging to the same output cell will be next to each other
-  std::sort (index_vector.begin (), index_vector.end (), std::less<cloud_point_index_idx> ());
-
+  
+  time0 = currentDateTime();  
+  std::stable_sort (index_vector.begin (), index_vector.end (), std::less<cloud_point_index_idx> ());
+  time1 = currentDateTime();
+  std::cout << "total time taken second pass sorting in mili secs =" << (time1 - time0) << std::endl;
+  time0 = currentDateTime();
   // Third pass: count output cells
   // we need to skip all the same, adjacenent idx values
   size_t total = 0;
@@ -761,6 +770,9 @@ pcl::VoxelGrid<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2 &output)
     index = i;
   }
 
+  time1 = currentDateTime();
+  std::cout << "total time taken third pass  in mili secs =" << (time1 - time0) << std::endl;
+  time0 = currentDateTime();
   // Fourth pass: compute centroids, insert them into their final position
   output.width = uint32_t (total);
   output.row_step = output.point_step * output.width;
@@ -907,6 +919,9 @@ pcl::VoxelGrid<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2 &output)
     cp = i;
     ++index;
   }
+
+  time1 = currentDateTime();
+  std::cout << "total time taken 4th pass and computing centroid   in mili secs =" << (time1 - time0) << std::endl;
 }
 
 #ifndef PCL_NO_PRECOMPILE

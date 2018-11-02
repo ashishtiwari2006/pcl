@@ -223,6 +223,7 @@ static inline long currentDateTime()
 template <typename PointT> void
 pcl::VoxelGrid<PointT>::applyFilter (PointCloud &output)
 {
+   std::cout << "Improved hpp:applyFilter" << std::endl;
   // Has the input dataset been set already?
   if (!input_)
   {
